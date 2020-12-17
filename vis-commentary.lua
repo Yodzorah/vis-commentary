@@ -77,18 +77,28 @@ end
 local function uncomment_line(lines, lnum, prefix, suffix, sel)
     local file = vis.win.file
     local _, sot_col = lines[lnum]:find('^%s*%S')
-    local pref_len, suff_len = prefix:len() + 1, suffix:len() + 1 -- + spaces
+    local pref_len, suff_len = prefix:len(), suffix:len()
 
     sel:to(lnum, sot_col)
     local sopref_pos = sel.pos
+    local symbl_after_pref = file:content(sopref_pos + pref_len, 1)
+
+    if symbl_after_pref == ' ' then
+        pref_len = pref_len + 1 -- + space
+    end
 
     file:delete(sopref_pos, pref_len)
 
     if suffix ~= '' then
-        local sosuff_byte = lines[lnum]:find(' ' .. esc(suffix) .. '%s*$') -- start of suffix byte pos
+        local sosuff_byte = lines[lnum]:find(' ?' .. esc(suffix) .. '%s*$') -- start of suffix byte pos
 
         sel:to(lnum, 1)
         local sosuff_pos = sel.pos + sosuff_byte - 1 -- workaround for multi-byte chars
+        local symbl_before_suff = file:content(sosuff_pos, 1)
+
+        if symbl_before_suff == ' ' then
+            suff_len = suff_len + 1 -- + space
+        end
 
         file:delete(sosuff_pos, suff_len)
     end
