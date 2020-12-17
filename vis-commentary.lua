@@ -27,6 +27,15 @@ local comment_string = {
     xml='<!--|-->', yaml='#'
 }
 
+-- how many bytes are in the last character of a range
+local function bytes_in_last_char(range)
+    local text = vis.win.file:content(range) .. 'a'
+    local before_lchar = utf8.offset(text, -2)
+    local after_lchar  = utf8.offset(text, -1)
+
+    return after_lchar - before_lchar
+end
+
 -- escape all magic characters with a '%'
 local function esc(str)
     if not str then return "" end
@@ -76,10 +85,10 @@ local function uncomment_line(lines, lnum, prefix, suffix, sel)
     file:delete(sopref_pos, pref_len)
 
     if suffix ~= '' then
-        local sosuff_col = lines[lnum]:find(' ' .. esc(suffix) .. '%s*$') -- start of suffix col
+        local sosuff_byte = lines[lnum]:find(' ' .. esc(suffix) .. '%s*$') -- start of suffix byte pos
 
-        sel:to(lnum, sosuff_col)
-        local sosuff_pos = sel.pos
+        sel:to(lnum, 1)
+        local sosuff_pos = sel.pos + sosuff_byte - 1 -- workaround for multi-byte chars
 
         file:delete(sosuff_pos, suff_len)
     end
@@ -169,7 +178,7 @@ local function visual_f(i)
 
             if sel.anchored and r then
                 local cursor_was = 'start'
-                if sel.pos + 1 == r.finish then
+                if sel.pos + bytes_in_last_char(r) == r.finish then
                     cursor_was = 'finish'
                 end
 
@@ -191,7 +200,7 @@ local function visual_f(i)
 
                     local pos = sel.pos
                     if cursor_was == 'finish' then
-                        pos = sel.pos + 1
+                        pos = sel.pos + bytes_in_last_char(r)
                     end
                     -- if the cursor is not at the side it was, restore its position
                     if pos ~= sel.range[cursor_was] then
