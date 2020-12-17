@@ -178,7 +178,8 @@ local function visual_f(i)
 
             if sel.anchored and r then
                 local cursor_was = 'start'
-                if sel.pos + bytes_in_last_char(r) == r.finish then
+                local lchar_bytes = bytes_in_last_char(r)
+                if sel.pos + lchar_bytes == r.finish then
                     cursor_was = 'finish'
                 end
 
@@ -187,7 +188,7 @@ local function visual_f(i)
                 local start_m = file:mark_set(sel.pos)
                 sel.pos = r.finish
                 local b = sel.line - i
-                local finish_m = file:mark_set(sel.pos)
+                local finish_m = file:mark_set(sel.pos - lchar_bytes)
 
                 block_comment(lines, a, b, prefix, suffix, sel)
 
@@ -196,11 +197,13 @@ local function visual_f(i)
 
                 -- if the cursor was not on the prefix/suffix when uncommenting
                 if r.start and r.finish then
+                    r.finish = r.finish + lchar_bytes
+
                     sel.range = r -- restore selection
 
                     local pos = sel.pos
                     if cursor_was == 'finish' then
-                        pos = sel.pos + bytes_in_last_char(r)
+                        pos = sel.pos + lchar_bytes
                     end
                     -- if the cursor is not at the side it was, restore its position
                     if pos ~= sel.range[cursor_was] then
